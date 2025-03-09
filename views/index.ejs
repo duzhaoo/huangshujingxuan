@@ -47,27 +47,50 @@
 </head>
 <body>
     <div class="container">
-        <% articles.forEach(function(article) { %>
-        <div class="article">
-            <h2>
-                <% if (article.originalUrl) { %>
-                <a href="<%= article.originalUrl %>" target="_blank" style="color: #1d1d1f; text-decoration: none; transition: color 0.2s;">
-                    <%= article.title %>
-                    <span style="font-size: 0.8em; color: #0066cc;">↗</span>
-                </a>
-                <% } else { %>
-                <%= article.title %>
-                <% } %>
-            </h2>
-            <% if (article.quote) { %>
-            <div class="quote"><%= article.quote %></div>
-            <% } %>
-            <% if (article.comment) { %>
-            <div class="comment"><%= article.comment %></div>
-            <% } %>
-            <div class="content"><%= article.content %></div>
+        <h1 style="text-align: center; margin-bottom: 30px; color: #1d1d1f;">个人博客</h1>
+        
+        <% if (typeof error !== 'undefined' && error) { %>
+        <div class="article" style="border-left: 4px solid #c41e3a; background-color: #fff8f8;">
+            <h3 style="color: #c41e3a; margin-top: 0;">错误提示</h3>
+            <p><%= error %></p>
+            <div style="margin-top: 15px;">
+                <p>可能的原因：</p>
+                <ol>
+                    <li>飞书API配置不正确，请检查环境变量</li>
+                    <li>多维表格权限不足，请确认应用有访问权限</li>
+                    <li>多维表格结构与代码中的字段名称不匹配</li>
+                </ol>
+            </div>
         </div>
-        <% }); %>
+        <% } %>
+        
+        <% if (articles && articles.length > 0) { %>
+            <% articles.forEach(function(article) { %>
+            <div class="article">
+                <h2>
+                    <% if (article.originalUrl) { %>
+                    <a href="<%= article.originalUrl %>" target="_blank" style="color: #1d1d1f; text-decoration: none; transition: color 0.2s;">
+                        <%= article.title %>
+                        <span style="font-size: 0.8em; color: #0066cc;">↗</span>
+                    </a>
+                    <% } else { %>
+                    <%= article.title %>
+                    <% } %>
+                </h2>
+                <% if (article.quote) { %>
+                <div class="quote"><%= article.quote %></div>
+                <% } %>
+                <% if (article.comment) { %>
+                <div class="comment"><%= article.comment %></div>
+                <% } %>
+                <div class="content"><%= article.content %></div>
+            </div>
+            <% }); %>
+        <% } else if (!error) { %>
+            <div class="article">
+                <p style="text-align: center; color: #888;">暂无文章内容</p>
+            </div>
+        <% } %>
     </div>
 </body>
 </html>

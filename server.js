@@ -6,12 +6,20 @@ const path = require('path');
 // 加载环境变量
 dotenv.config();
 
+// 输出环境变量信息（不包含敏感信息）
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('VERCEL_ENV:', process.env.VERCEL_ENV);
+console.log('PORT:', process.env.PORT);
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // 设置视图引擎
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+
+// 静态文件服务 - 在路由定义前设置
+app.use(express.static(path.join(__dirname, 'public')));
 
 // 飞书API相关配置
 const FEISHU_APP_ID = process.env.FEISHU_APP_ID;
@@ -72,8 +80,32 @@ async function getTableRecords() {
 // 首页路由
 app.get('/', async (req, res) => {
     try {
+        console.log('访问首页路由');
+        console.log('环境变量检查:', {
+            FEISHU_APP_ID_EXISTS: !!process.env.FEISHU_APP_ID,
+            FEISHU_APP_SECRET_EXISTS: !!process.env.FEISHU_APP_SECRET,
+            BASE_ID_EXISTS: !!process.env.BASE_ID,
+            TABLE_ID_EXISTS: !!process.env.TABLE_ID
+        });
+        
+        // 如果缺少必要的环境变量，显示错误信息
+        if (!FEISHU_APP_ID || !FEISHU_APP_SECRET || !BASE_ID || !TABLE_ID) {
+            return res.render('index', { 
+                articles: [], 
+                error: '缺少必要的环境变量配置，请在Vercel中设置飞书API相关的环境变量' 
+            });
+        }
+        
         const records = await getTableRecords();
-        console.log('获取到的记录:', JSON.stringify(records, null, 2));
+        console.log('获取到的记录数量:', records ? records.length : 0);
+        
+        // 如果没有记录，显示空列表
+        if (!records || records.length === 0) {
+            return res.render('index', { 
+                articles: [], 
+                error: '未能获取到飞书多维表格数据，请检查环境变量配置和飞书API权限' 
+            });
+        }
         
         const articles = records.map(record => {
             const fields = record.fields || {};
@@ -116,25 +148,26 @@ app.get('/', async (req, res) => {
                                extractFieldValue(fields['链接']) || 
                                '';
             
-            console.log('处理后的文章:', { title, quote, comment, content, originalUrl });
-            
             return { title, quote, comment, content, originalUrl };
         });
         
-        res.render('index', { articles });
+        res.render('index', { articles, error: null });
     } catch (error) {
-        console.error('渲染首页失败:', error.message);
-        res.status(500).send('服务器错误');
+        console.error('渲染首页失败:', error.message, error.stack);
+        res.render('index', { 
+            articles: [], 
+            error: `服务器错误: ${error.message}` 
+        });
     }
 });
 
-// 静态文件服务
-app.use(express.static(path.join(__dirname, 'public')));
-
 // 错误处理中间件
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).send('服务器错误');
+    console.error('服务器错误:', err.message, err.stack);
+    res.status(500).render('index', { 
+        articles: [], 
+        error: `服务器错误: ${err.message}` 
+    });
 });
 
 // 健康检查路由，对Vercel部署有用
@@ -142,10 +175,20 @@ app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
 
+// 404错误处理
+app.use((req, res) => {
+    console.log('404 Not Found:', req.originalUrl);
+    res.status(404).render('index', { 
+        articles: [], 
+        error: `页面不存在: ${req.originalUrl}` 
+    });
+});
+
 // 如果不是Vercel环境，启动本地服务器
-if (process.env.VERCEL !== '1') {
+// 注意: Vercel使用serverless函数，不需要显式启动服务器
+if (process.env.VERCEL_ENV === undefined) {
     app.listen(PORT, () => {
-        console.log(`服务器运行在 http://localhost:${PORT}`);
+        console.log(`本地服务器运行在 http://localhost:${PORT}`);
     });
 }
 
